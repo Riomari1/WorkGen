@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server";
 import {
+  enrichWorkoutPlan,
   workoutInputSchema,
-  workoutPlanSchema
+  workoutPlanSchema,
+  type ModelWorkoutPlan,
 } from "@/lib/workout";
 import { buildSystemPrompt, buildUserPrompt } from "@/lib/prompts";
 
-const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
-const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+// OpenCode Zen exposes MiniMax M2.5 Free through an OpenAI-compatible endpoint.
+const OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions";
+const MODEL = process.env.OPENCODE_MODEL || "minimax-m2.5-free";
 
-type DeepSeekResponse = {
+type OpenCodeResponse = {
   choices?: Array<{
     message?: {
       content?: string;
@@ -20,13 +23,13 @@ type DeepSeekResponse = {
 };
 
 async function generateWorkoutJson(messages: Array<{ role: "system" | "user"; content: string }>) {
-  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const apiKey = process.env.OpenCode_API_Key || process.env.OPENCODE_API_KEY;
 
   if (!apiKey) {
-    throw new Error("Missing DEEPSEEK_API_KEY.");
+    throw new Error("Missing OpenCode_API_Key.");
   }
 
-  const response = await fetch(DEEPSEEK_URL, {
+  const response = await fetch(OPENCODE_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -36,13 +39,14 @@ async function generateWorkoutJson(messages: Array<{ role: "system" | "user"; co
       model: MODEL,
       messages,
       max_tokens: 1800,
+      temperature: 0.6,
       response_format: {
         type: "json_object",
       },
     }),
   });
 
-  const data = (await response.json()) as DeepSeekResponse;
+  const data = (await response.json()) as OpenCodeResponse;
 
   if (!response.ok) {
     throw new Error(data.error?.message || "The model request failed.");
@@ -77,9 +81,11 @@ export async function POST(request: Request) {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const raw = await generateWorkoutJson(messages);
-        const parsed = workoutPlanSchema.parse(JSON.parse(raw));
+        const parsed = JSON.parse(raw) as ModelWorkoutPlan;
+        const enriched = enrichWorkoutPlan(parsed, parsedInput.data);
+        const validated = workoutPlanSchema.parse(enriched);
 
-        return NextResponse.json(parsed);
+        return NextResponse.json(validated);
       } catch (error) {
         if (attempt === 1) {
           throw error;

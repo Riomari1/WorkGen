@@ -16,8 +16,8 @@ export default function HomePage() {
                 </h1>
                 <p className="max-w-4xl text-base leading-7 text-slate-600 sm:text-lg xl:text-[1.15rem]">
                   Enter your goal, time, equipment, and constraints. The app returns
-                  a clear session with warm-up, main block, cooldown, timing, and a
-                  short rationale you can demo in one flow.
+                  a clear session with warm-up, main block, cooldown, body metrics,
+                  calorie estimates, and benefits you can demo in one flow.
                 </p>
               </div>
             </div>
@@ -27,8 +27,8 @@ export default function HomePage() {
                   What it generates
                 </span>
                 <span className="text-sm text-slate-300">
-                  Warm-up, working sets, reps, rest, cooldown, session timing, and
-                  why the plan fits the inputs.
+                  Warm-up, working sets, reps, rest, cooldown, BMI-aware planning,
+                  calorie estimates, and benefits tied to the inputs.
                 </span>
               </div>
               <div className="grid gap-2 text-sm text-slate-300 sm:grid-cols-2">

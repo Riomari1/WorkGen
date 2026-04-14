@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import {
+  calculateBmi,
+  getBmiCategory,
   workoutPlanSchema,
   type WorkoutInput,
-  type WorkoutPlan,
+  type WorkoutPlan
 } from "@/lib/workout";
 import { WorkoutPlanView } from "@/components/workout-plan-view";
 
@@ -12,6 +14,8 @@ const initialForm: WorkoutInput = {
   goal: "",
   experienceLevel: "beginner",
   durationMinutes: 30,
+  heightCm: 175,
+  weightKg: 75,
   equipment: "",
   limitations: "",
 };
@@ -27,6 +31,8 @@ export function WorkoutGenerator() {
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const bmi = calculateBmi(form.heightCm, form.weightKg);
+  const bmiCategory = getBmiCategory(bmi);
 
   async function submitForm() {
     setIsLoading(true);
@@ -142,6 +148,57 @@ export function WorkoutGenerator() {
                 }
               />
             </label>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="grid gap-2">
+              <span className="text-sm font-medium text-slate-800">Height (cm)</span>
+              <input
+                className="field"
+                max={230}
+                min={120}
+                step={1}
+                type="number"
+                value={form.heightCm}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    heightCm: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <label className="grid gap-2">
+              <span className="text-sm font-medium text-slate-800">Weight (kg)</span>
+              <input
+                className="field"
+                max={250}
+                min={35}
+                step={1}
+                type="number"
+                value={form.weightKg}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    weightKg: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+          </div>
+
+          <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/70 p-4">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-amber-900">
+              <span className="font-semibold">BMI {bmi}</span>
+              <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
+                {bmiCategory}
+              </span>
+            </div>
+            <p className="mt-2 text-sm leading-6 text-amber-900/80">
+              Height and weight are used to personalize the prompt and to calculate
+              exercise calorie estimates in the generated plan.
+            </p>
           </div>
 
           <label className="grid gap-2">

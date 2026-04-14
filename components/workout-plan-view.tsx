@@ -58,8 +58,8 @@ export function WorkoutPlanView({
           </h2>
           <p className="text-sm leading-6 text-slate-600">
             The generated session will be split into warm-up, main workout,
-            cooldown, time estimate, and a short explanation for why it matches
-            the inputs.
+            cooldown, body metrics, calorie estimates, and a short explanation
+            of how it helps.
           </p>
         </div>
       </div>
@@ -69,7 +69,7 @@ export function WorkoutPlanView({
   return (
     <div className="grid gap-4">
       <SectionCard subtitle={plan.summary.focus} title={plan.summary.title}>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
               Estimated Time
@@ -88,6 +88,33 @@ export function WorkoutPlanView({
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              Estimated Burn
+            </p>
+            <p className="mt-2 text-lg font-semibold text-slate-950">
+              {plan.summary.estimatedCalories} cal
+            </p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              Weight
+            </p>
+            <p className="mt-2 text-lg font-semibold text-slate-950">
+              {plan.userMetrics.weightKg} kg
+            </p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+              BMI
+            </p>
+            <p className="mt-2 text-lg font-semibold text-slate-950">
+              {plan.userMetrics.bmi}
+            </p>
+            <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+              {plan.userMetrics.bmiCategory}
+            </p>
+          </div>
+          <div className="rounded-2xl bg-slate-50 p-4">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
               Session Flow
             </p>
             <p className="mt-2 text-sm leading-6 text-slate-700">
@@ -97,7 +124,10 @@ export function WorkoutPlanView({
         </div>
       </SectionCard>
 
-      <SectionCard title="Warm-up" subtitle="Prepare joints, temperature, and movement quality.">
+      <SectionCard
+        title="Warm-up"
+        subtitle="Prepare joints, temperature, and movement quality."
+      >
         <div className="grid gap-3 2xl:grid-cols-2">
           {plan.warmup.map((item) => (
             <div
@@ -120,7 +150,10 @@ export function WorkoutPlanView({
         </div>
       </SectionCard>
 
-      <SectionCard title="Main Workout" subtitle="Working sets with clear reps and recovery.">
+      <SectionCard
+        title="Main Workout"
+        subtitle="Working sets with clear reps and recovery."
+      >
         <div className="grid gap-3">
           {plan.mainWorkout.map((item, index) => (
             <div
@@ -133,7 +166,9 @@ export function WorkoutPlanView({
                     <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-slate-950 text-xs font-semibold text-white">
                       {index + 1}
                     </span>
-                    <h4 className="font-semibold text-slate-950">{item.name}</h4>
+                    <h4 className="font-semibold text-slate-950">
+                      {item.name}
+                    </h4>
                   </div>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     {item.details}
@@ -149,6 +184,15 @@ export function WorkoutPlanView({
                   <span className="rounded-full bg-slate-100 px-3 py-1">
                     Rest {item.rest}
                   </span>
+                  <span className="rounded-full bg-amber-50 px-3 py-1 text-amber-800">
+                    {item.estimatedMinutes} min
+                  </span>
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 capitalize text-emerald-800">
+                    {item.intensity}
+                  </span>
+                  <span className="rounded-full bg-slate-950 px-3 py-1 text-white">
+                    {item.estimatedCalories} cal
+                  </span>
                 </div>
               </div>
             </div>
@@ -157,7 +201,10 @@ export function WorkoutPlanView({
       </SectionCard>
 
       <div className="grid gap-4 2xl:grid-cols-[0.9fr_1.1fr]">
-        <SectionCard title="Cooldown" subtitle="Bring effort down and finish cleanly.">
+        <SectionCard
+          title="Cooldown"
+          subtitle="Bring effort down and finish cleanly."
+        >
           <div className="grid gap-3">
             {plan.cooldown.map((item) => (
               <div
@@ -166,7 +213,9 @@ export function WorkoutPlanView({
               >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h4 className="font-semibold text-slate-950">{item.name}</h4>
+                    <h4 className="font-semibold text-slate-950">
+                      {item.name}
+                    </h4>
                     <p className="mt-1 text-sm leading-6 text-slate-600">
                       {item.details}
                     </p>
@@ -180,9 +229,12 @@ export function WorkoutPlanView({
           </div>
         </SectionCard>
 
-        <SectionCard title="Why This Fits" subtitle="A short rationale for the plan.">
+        <SectionCard
+          title="How This Helps You"
+          subtitle="Benefits tied to the user inputs and session design."
+        >
           <div className="space-y-5">
-            <p className="text-sm leading-7 text-slate-700">{plan.whyItFits}</p>
+            <p className="text-sm leading-7 text-slate-700">{plan.howItHelps}</p>
             <div className="grid gap-2 rounded-2xl bg-slate-50 p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
                 Time Breakdown
