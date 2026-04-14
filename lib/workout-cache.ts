@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { Redis } from "@upstash/redis";
 import type { WorkoutInput, WorkoutPlan } from "@/lib/workout";
 
 type CacheEntry = {
@@ -8,6 +9,25 @@ type CacheEntry = {
 
 const DEFAULT_TTL_MS = 1000 * 60 * 60 * 12;
 const cache = new Map<string, CacheEntry>();
+let redisClient: Redis | null | undefined;
+
+function getRedisClient() {
+  if (redisClient !== undefined) {
+    return redisClient;
+  }
+
+  const url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL;
+  const token =
+    process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN;
+
+  if (!url || !token) {
+    redisClient = null;
+    return redisClient;
+  }
+
+  redisClient = new Redis({ url, token });
+  return redisClient;
+}
 
 function getTtlMs() {
   const rawValue = process.env.WORKOUT_CACHE_TTL_MS;
@@ -21,14 +41,24 @@ function getTtlMs() {
 }
 
 function normalizeInput(input: WorkoutInput) {
+  const normalizeText = (value: string) =>
+    value.trim().toLowerCase().replace(/\s+/g, " ");
+
+  const normalizeList = (value: string) =>
+    normalizeText(value)
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .sort();
+
   return {
-    goal: input.goal.trim().toLowerCase(),
+    goal: normalizeText(input.goal),
     experienceLevel: input.experienceLevel,
     durationMinutes: input.durationMinutes,
     heightCm: input.heightCm,
     weightKg: input.weightKg,
-    equipment: input.equipment.trim().toLowerCase(),
-    limitations: (input.limitations || "").trim().toLowerCase(),
+    equipment: normalizeList(input.equipment),
+    limitations: normalizeText(input.limitations || ""),
   };
 }
 
@@ -41,7 +71,17 @@ export function createWorkoutCacheKey(input: WorkoutInput, model: string) {
   return createHash("sha256").update(normalized).digest("hex");
 }
 
-export function getCachedWorkout(key: string) {
+export async function getCachedWorkout(key: string) {
+  const redis = getRedisClient();
+
+  if (redis) {
+    const sharedValue = await redis.get<WorkoutPlan>(`workout:${key}`);
+
+    if (sharedValue) {
+      return sharedValue;
+    }
+  }
+
   const entry = cache.get(key);
 
   if (!entry) {
@@ -56,7 +96,15 @@ export function getCachedWorkout(key: string) {
   return entry.value;
 }
 
-export function setCachedWorkout(key: string, value: WorkoutPlan) {
+export async function setCachedWorkout(key: string, value: WorkoutPlan) {
+  const redis = getRedisClient();
+
+  if (redis) {
+    const ttlSeconds = Math.max(1, Math.floor(getTtlMs() / 1000));
+
+    await redis.set(`workout:${key}`, value, { ex: ttlSeconds });
+  }
+
   cache.set(key, {
     createdAt: Date.now(),
     value,

@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     const cacheKey = createWorkoutCacheKey(parsedInput.data, MODEL);
 
     if (!bypassCache) {
-      const cachedPlan = getCachedWorkout(cacheKey);
+      const cachedPlan = await getCachedWorkout(cacheKey);
 
       if (cachedPlan) {
         return NextResponse.json(cachedPlan, {
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
         const parsed = JSON.parse(raw) as ModelWorkoutPlan;
         const enriched = enrichWorkoutPlan(parsed, parsedInput.data);
         const validated = workoutPlanSchema.parse(enriched);
-        setCachedWorkout(cacheKey, validated);
+        await setCachedWorkout(cacheKey, validated);
 
         return NextResponse.json(validated, {
           headers: {
