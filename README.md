@@ -2,6 +2,14 @@
 
 Workout Generator is a polished AI MVP that creates personalized workout sessions from a few user inputs. It is built as a simple, single-page Next.js app for fast demos and straightforward deployment.
 
+## Current MVP
+
+- Single-page form with goal, experience, duration, equipment, limitations, height, and weight
+- Structured workout output with warm-up, main workout, cooldown, timing, BMI, and calorie estimates
+- DeepSeek-powered workout generation through a server-side API route
+- Shared Redis caching through Upstash when configured, with in-memory fallback
+- Regenerate flow that bypasses cache for a fresh result
+
 ## Stack
 
 - Next.js App Router
@@ -51,6 +59,16 @@ lib/
 
 4. Open `http://localhost:3000`.
 
+## Example `.env.local`
+
+```env
+DEEPSEEK_API_KEY=your_deepseek_key
+DEEPSEEK_MODEL=deepseek-chat
+WORKOUT_CACHE_TTL_MS=43200000
+UPSTASH_REDIS_REST_URL=your_upstash_rest_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_rest_token
+```
+
 ## Environment Variables
 
 - `DEEPSEEK_API_KEY`: required
@@ -66,6 +84,27 @@ lib/
 - Add the same environment variables in your deployment platform.
 - The AI call happens server-side in `app/api/generate/route.ts`, so the API key is not exposed to the client.
 - If Upstash Redis env vars are set, the cache is shared across instances. Otherwise it falls back to process-local memory.
+
+## Vercel Setup
+
+1. Import the repo into Vercel.
+2. Add these environment variables in `Settings -> Environment Variables`:
+   - `DEEPSEEK_API_KEY`
+   - `DEEPSEEK_MODEL`
+   - `WORKOUT_CACHE_TTL_MS`
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+3. Deploy.
+4. Test by generating the same workout twice. Matching requests should reuse cache once Redis is configured.
+
+## Cache Behavior
+
+- Default TTL is `12 hours` via `WORKOUT_CACHE_TTL_MS=43200000`
+- Cache keys are built from normalized workout inputs plus the model id
+- Equipment lists are normalized to reduce duplicate cache entries from ordering differences
+- `Generate workout` uses cache when available
+- `Regenerate` bypasses cache on purpose
+- If Redis is unavailable, the app still works and falls back to normal LLM generation
 
 ## Cache Roadmap
 
