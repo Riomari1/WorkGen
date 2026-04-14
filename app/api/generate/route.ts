@@ -5,10 +5,18 @@ import {
   workoutPlanSchema,
   type ModelWorkoutPlan,
 } from "@/lib/workout";
+import {
+  createWorkoutCacheKey,
+  getCachedWorkout,
+  setCachedWorkout,
+} from "@/lib/workout-cache";
 import { buildSystemPrompt, buildUserPrompt } from "@/lib/prompts";
 
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
+
+export const runtime = "nodejs";
+export const maxDuration = 20;
 
 type DeepSeekResponse = {
   choices?: Array<{
@@ -63,6 +71,8 @@ async function generateWorkoutJson(
 
 export async function POST(request: Request) {
   try {
+    const url = new URL(request.url);
+    const bypassCache = url.searchParams.get("fresh") === "1";
     const json = await request.json();
     const parsedInput = workoutInputSchema.safeParse(json);
 
@@ -71,6 +81,20 @@ export async function POST(request: Request) {
         { error: "Please complete the required fields before generating." },
         { status: 400 },
       );
+    }
+
+    const cacheKey = createWorkoutCacheKey(parsedInput.data, MODEL);
+
+    if (!bypassCache) {
+      const cachedPlan = getCachedWorkout(cacheKey);
+
+      if (cachedPlan) {
+        return NextResponse.json(cachedPlan, {
+          headers: {
+            "x-workout-cache": "HIT",
+          },
+        });
+      }
     }
 
     const messages = [
@@ -84,8 +108,13 @@ export async function POST(request: Request) {
         const parsed = JSON.parse(raw) as ModelWorkoutPlan;
         const enriched = enrichWorkoutPlan(parsed, parsedInput.data);
         const validated = workoutPlanSchema.parse(enriched);
+        setCachedWorkout(cacheKey, validated);
 
-        return NextResponse.json(validated);
+        return NextResponse.json(validated, {
+          headers: {
+            "x-workout-cache": bypassCache ? "BYPASS" : "MISS",
+          },
+        });
       } catch (error) {
         if (attempt === 1) {
           throw error;

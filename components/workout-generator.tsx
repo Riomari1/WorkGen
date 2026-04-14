@@ -31,15 +31,18 @@ export function WorkoutGenerator() {
   const [plan, setPlan] = useState<WorkoutPlan | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<"HIT" | "MISS" | "BYPASS" | "">(
+    "",
+  );
   const bmi = calculateBmi(form.heightCm, form.weightKg);
   const bmiCategory = getBmiCategory(bmi);
 
-  async function submitForm() {
+  async function submitForm(forceFresh = false) {
     setIsLoading(true);
     setError("");
 
     try {
-      const response = await fetch("/api/generate", {
+      const response = await fetch(`/api/generate${forceFresh ? "?fresh=1" : ""}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -68,6 +71,9 @@ export function WorkoutGenerator() {
       }
 
       setPlan(parsedPlan.data);
+      setCacheStatus(
+        response.headers.get("x-workout-cache") as "HIT" | "MISS" | "BYPASS" | "",
+      );
     } catch (submissionError) {
       const message =
         submissionError instanceof Error
@@ -75,6 +81,7 @@ export function WorkoutGenerator() {
           : "Unable to generate a workout right now.";
 
       setError(message);
+      setCacheStatus("");
     } finally {
       setIsLoading(false);
     }
@@ -234,7 +241,7 @@ export function WorkoutGenerator() {
           <button
             className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-slate-950 px-5 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400 xl:w-full 2xl:w-auto"
             disabled={isLoading}
-            onClick={submitForm}
+            onClick={() => submitForm(false)}
             type="button"
           >
             {isLoading ? "Generating workout..." : "Generate workout"}
@@ -243,12 +250,20 @@ export function WorkoutGenerator() {
           <button
             className="inline-flex min-h-12 items-center justify-center rounded-2xl border border-slate-300 px-5 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400 xl:w-full 2xl:w-auto"
             disabled={isLoading || !plan}
-            onClick={submitForm}
+            onClick={() => submitForm(true)}
             type="button"
           >
             Regenerate
           </button>
         </div>
+
+        {cacheStatus ? (
+          <p className="mt-3 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+            {cacheStatus === "HIT" ? "Loaded from cache" : null}
+            {cacheStatus === "MISS" ? "Freshly generated" : null}
+            {cacheStatus === "BYPASS" ? "Regenerated without cache" : null}
+          </p>
+        ) : null}
 
         {error ? (
           <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
