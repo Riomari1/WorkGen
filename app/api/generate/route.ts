@@ -7,11 +7,10 @@ import {
 } from "@/lib/workout";
 import { buildSystemPrompt, buildUserPrompt } from "@/lib/prompts";
 
-// OpenCode Zen exposes MiniMax M2.5 Free through an OpenAI-compatible endpoint.
-const OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions";
-const MODEL = process.env.OPENCODE_MODEL || "minimax-m2.5-free";
+const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
+const MODEL = process.env.DEEPSEEK_MODEL || "deepseek-chat";
 
-type OpenCodeResponse = {
+type DeepSeekResponse = {
   choices?: Array<{
     message?: {
       content?: string;
@@ -22,14 +21,16 @@ type OpenCodeResponse = {
   };
 };
 
-async function generateWorkoutJson(messages: Array<{ role: "system" | "user"; content: string }>) {
-  const apiKey = process.env.OpenCode_API_Key || process.env.OPENCODE_API_KEY;
+async function generateWorkoutJson(
+  messages: Array<{ role: "system" | "user"; content: string }>,
+) {
+  const apiKey = process.env.DEEPSEEK_API_KEY;
 
   if (!apiKey) {
-    throw new Error("Missing OpenCode_API_Key.");
+    throw new Error("Missing DEEPSEEK_API_KEY.");
   }
 
-  const response = await fetch(OPENCODE_URL, {
+  const response = await fetch(DEEPSEEK_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -39,14 +40,13 @@ async function generateWorkoutJson(messages: Array<{ role: "system" | "user"; co
       model: MODEL,
       messages,
       max_tokens: 1800,
-      temperature: 0.6,
       response_format: {
         type: "json_object",
       },
     }),
   });
 
-  const data = (await response.json()) as OpenCodeResponse;
+  const data = (await response.json()) as DeepSeekResponse;
 
   if (!response.ok) {
     throw new Error(data.error?.message || "The model request failed.");

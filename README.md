@@ -7,14 +7,14 @@ Workout Generator is a polished AI MVP that creates personalized workout session
 - Next.js App Router
 - TypeScript
 - Tailwind CSS v4
-- Server-side OpenCode Zen Chat Completions API call with JSON output
+- Server-side DeepSeek Chat Completions API call with JSON output
 - Zod validation for request and response safety
 
 ## Project Structure
 
 ```text
 app/
-  api/generate/route.ts   # server endpoint for OpenCode workout generation
+  api/generate/route.ts   # server endpoint for DeepSeek workout generation
   globals.css             # global styles and field primitives
   layout.tsx
   page.tsx                # single-page UI shell
@@ -51,8 +51,8 @@ lib/
 
 ## Environment Variables
 
-- `OpenCode_API_Key`: required
-- `OPENCODE_MODEL`: optional, defaults to `minimax-m2.5-free`
+- `DEEPSEEK_API_KEY`: required
+- `DEEPSEEK_MODEL`: optional, defaults to `deepseek-chat`
 
 ## Deployment Notes
 
