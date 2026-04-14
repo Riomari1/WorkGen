@@ -1,4 +1,5 @@
 import type { WorkoutInput } from "@/lib/workout";
+import { hasReasonableBodyMetrics } from "@/lib/workout";
 
 export function buildSystemPrompt() {
   return [
@@ -14,16 +15,28 @@ export function buildSystemPrompt() {
 }
 
 export function buildUserPrompt(input: WorkoutInput) {
-  const bmi = (input.weightKg / (input.heightCm / 100) ** 2).toFixed(1);
+  const hasMetrics = hasReasonableBodyMetrics(input.heightCm, input.weightKg);
+  const bmi = hasMetrics
+    ? (
+        (input.weightKg as number) /
+        ((input.heightCm as number) / 100) ** 2
+      ).toFixed(1)
+    : null;
 
   return [
     "Create one personalized workout session.",
     `Goal: ${input.goal}.`,
+    `Preferred unit system: ${input.unitSystem}.`,
     `Experience level: ${input.experienceLevel}.`,
+    `Training frequency target: ${input.daysPerWeek} days per week.`,
     `Workout duration: ${input.durationMinutes} minutes.`,
-    `Height: ${input.heightCm} cm.`,
-    `Weight: ${input.weightKg} kg.`,
-    `BMI: ${bmi}.`,
+    ...(hasMetrics
+      ? [
+          `Height: ${input.heightCm} cm.`,
+          `Weight: ${input.weightKg} kg.`,
+          `BMI: ${bmi}.`,
+        ]
+      : ["Ignore body-metric personalization because height/weight were missing or unrealistic."]),
     `Available equipment: ${input.equipment}.`,
     `Limitations or injuries: ${input.limitations || "None provided."}`,
     "Requirements:",

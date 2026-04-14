@@ -1,11 +1,32 @@
 import { z } from "zod";
 
+const numberField = (label: string, min: number, max: number) =>
+  z.coerce
+    .number({
+      invalid_type_error: `${label} is required.`,
+    })
+    .finite(`${label} is required.`)
+    .min(min, `${label} must be at least ${min}.`)
+    .max(max, `${label} must be at most ${max}.`);
+
+const optionalNumberField = () =>
+  z.preprocess((value) => {
+    if (value === "" || value === null || value === undefined) {
+      return undefined;
+    }
+
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : undefined;
+  }, z.number().finite().optional());
+
 export const workoutInputSchema = z.object({
   goal: z.string().trim().min(2, "Goal is required."),
+  unitSystem: z.enum(["metric", "imperial"]),
   experienceLevel: z.enum(["beginner", "intermediate", "advanced"]),
-  durationMinutes: z.number().min(10).max(120),
-  heightCm: z.number().min(120).max(230),
-  weightKg: z.number().min(35).max(250),
+  daysPerWeek: numberField("Days per week", 1, 7),
+  durationMinutes: numberField("Workout duration", 10, 120),
+  heightCm: optionalNumberField(),
+  weightKg: optionalNumberField(),
   equipment: z.string().trim().min(2, "Equipment is required."),
   limitations: z.string().trim().max(500).optional().or(z.literal("")),
 });
@@ -31,12 +52,14 @@ const timeBlockSchema = z.object({
   minutes: z.number().int().min(1),
 });
 
-const userMetricsSchema = z.object({
-  heightCm: z.number().min(120).max(230),
-  weightKg: z.number().min(35).max(250),
-  bmi: z.number().min(10).max(80),
-  bmiCategory: z.enum(["underweight", "healthy", "overweight", "obesity"]),
-});
+const userMetricsSchema = z
+  .object({
+    heightCm: z.number().min(120).max(230),
+    weightKg: z.number().min(35).max(250),
+    bmi: z.number().min(10).max(80),
+    bmiCategory: z.enum(["underweight", "healthy", "overweight", "obesity"]),
+  })
+  .nullable();
 
 export const workoutPlanSchema = z.object({
   summary: z.object({
@@ -72,6 +95,36 @@ export type ModelWorkoutPlan = Omit<WorkoutPlan, "userMetrics"> & {
 export function calculateBmi(heightCm: number, weightKg: number) {
   const heightMeters = heightCm / 100;
   return Number((weightKg / (heightMeters * heightMeters)).toFixed(1));
+}
+
+export function cmToInches(heightCm: number) {
+  return Number((heightCm / 2.54).toFixed(1));
+}
+
+export function inchesToCm(heightInches: number) {
+  return Number((heightInches * 2.54).toFixed(1));
+}
+
+export function kgToLb(weightKg: number) {
+  return Number((weightKg * 2.2046226218).toFixed(1));
+}
+
+export function lbToKg(weightLb: number) {
+  return Number((weightLb / 2.2046226218).toFixed(1));
+}
+
+export function hasReasonableBodyMetrics(
+  heightCm?: number,
+  weightKg?: number,
+): boolean {
+  return Boolean(
+    heightCm &&
+      weightKg &&
+      heightCm >= 120 &&
+      heightCm <= 230 &&
+      weightKg >= 35 &&
+      weightKg <= 250,
+  );
 }
 
 export function getBmiCategory(bmi: number) {
@@ -118,27 +171,31 @@ export function enrichWorkoutPlan(
   plan: ModelWorkoutPlan,
   input: Pick<WorkoutInput, "heightCm" | "weightKg">,
 ): WorkoutPlan {
-  const bmi = calculateBmi(input.heightCm, input.weightKg);
-  const bmiCategory = getBmiCategory(bmi);
+  const hasMetrics = hasReasonableBodyMetrics(input.heightCm, input.weightKg);
+  const effectiveWeightKg =
+    hasMetrics && input.weightKg !== undefined ? input.weightKg : 70;
+  const bmi =
+    hasMetrics && input.heightCm !== undefined && input.weightKg !== undefined
+      ? calculateBmi(input.heightCm, input.weightKg)
+      : null;
 
   const mainWorkout = plan.mainWorkout.map((exercise) => ({
     ...exercise,
-    // Use the standard MET calorie formula so the estimate is driven by
-    // user body weight plus the exercise-specific duration/intensity pair.
+    // Fall back to a neutral reference weight when body metrics are missing or absurd.
     estimatedCalories: estimateCalories(
-      input.weightKg,
+      effectiveWeightKg,
       exercise.estimatedMinutes,
       getMetFromIntensity(exercise.intensity),
     ),
   }));
 
   const warmupCalories = estimateCalories(
-    input.weightKg,
+    effectiveWeightKg,
     inferSupportBlockMinutes(plan.sessionTimeBreakdown, "warm"),
     3.5,
   );
   const cooldownCalories = estimateCalories(
-    input.weightKg,
+    effectiveWeightKg,
     inferSupportBlockMinutes(plan.sessionTimeBreakdown, "cool"),
     2.5,
   );
@@ -153,12 +210,14 @@ export function enrichWorkoutPlan(
       ...plan.summary,
       estimatedCalories: warmupCalories + mainWorkoutCalories + cooldownCalories,
     },
-    userMetrics: {
-      heightCm: input.heightCm,
-      weightKg: input.weightKg,
-      bmi,
-      bmiCategory,
-    },
+    userMetrics: hasMetrics
+      ? {
+          heightCm: input.heightCm as number,
+          weightKg: input.weightKg as number,
+          bmi: bmi as number,
+          bmiCategory: getBmiCategory(bmi as number),
+        }
+      : null,
     mainWorkout,
   };
 }

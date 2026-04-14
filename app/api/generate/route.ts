@@ -29,6 +29,23 @@ type DeepSeekResponse = {
   };
 };
 
+function parseModelJson(rawContent: string) {
+  const trimmed = rawContent.trim();
+
+  try {
+    return JSON.parse(trimmed) as ModelWorkoutPlan;
+  } catch {
+    const firstBrace = trimmed.indexOf("{");
+    const lastBrace = trimmed.lastIndexOf("}");
+
+    if (firstBrace === -1 || lastBrace === -1 || lastBrace <= firstBrace) {
+      throw new Error("The model returned invalid JSON.");
+    }
+
+    return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1)) as ModelWorkoutPlan;
+  }
+}
+
 async function generateWorkoutJson(
   messages: Array<{ role: "system" | "user"; content: string }>,
 ) {
@@ -77,8 +94,13 @@ export async function POST(request: Request) {
     const parsedInput = workoutInputSchema.safeParse(json);
 
     if (!parsedInput.success) {
+      const issues = parsedInput.error.issues.map((issue) => issue.message);
+
       return NextResponse.json(
-        { error: "Please complete the required fields before generating." },
+        {
+          error: issues[0] || "Please complete the required fields before generating.",
+          details: issues,
+        },
         { status: 400 },
       );
     }
@@ -105,7 +127,7 @@ export async function POST(request: Request) {
     for (let attempt = 0; attempt < 2; attempt += 1) {
       try {
         const raw = await generateWorkoutJson(messages);
-        const parsed = JSON.parse(raw) as ModelWorkoutPlan;
+        const parsed = parseModelJson(raw);
         const enriched = enrichWorkoutPlan(parsed, parsedInput.data);
         const validated = workoutPlanSchema.parse(enriched);
         await setCachedWorkout(cacheKey, validated);

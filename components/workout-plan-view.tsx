@@ -99,7 +99,7 @@ export function WorkoutPlanView({
               Weight
             </p>
             <p className="mt-2 text-lg font-semibold text-slate-950">
-              {plan.userMetrics.weightKg} kg
+              {plan.userMetrics ? `${plan.userMetrics.weightKg} kg` : "Approximate"}
             </p>
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
@@ -107,11 +107,13 @@ export function WorkoutPlanView({
               BMI
             </p>
             <p className="mt-2 text-lg font-semibold text-slate-950">
-              {plan.userMetrics.bmi}
+              {plan.userMetrics ? plan.userMetrics.bmi : "Not used"}
             </p>
-            <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
-              {plan.userMetrics.bmiCategory}
-            </p>
+            {plan.userMetrics ? (
+              <p className="mt-1 text-xs font-medium uppercase tracking-[0.18em] text-slate-500">
+                {plan.userMetrics.bmiCategory}
+              </p>
+            ) : null}
           </div>
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">

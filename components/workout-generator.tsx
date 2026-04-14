@@ -3,19 +3,26 @@
 import { useState } from "react";
 import {
   calculateBmi,
+  cmToInches,
   getBmiCategory,
+  hasReasonableBodyMetrics,
+  inchesToCm,
+  kgToLb,
+  lbToKg,
   workoutPlanSchema,
   type WorkoutInput,
-  type WorkoutPlan
+  type WorkoutPlan,
 } from "@/lib/workout";
 import { WorkoutPlanView } from "@/components/workout-plan-view";
 
 const initialForm: WorkoutInput = {
   goal: "",
+  unitSystem: "metric",
   experienceLevel: "beginner",
+  daysPerWeek: 3,
   durationMinutes: 30,
-  heightCm: 175,
-  weightKg: 75,
+  heightCm: undefined,
+  weightKg: undefined,
   equipment: "",
   limitations: "",
 };
@@ -34,8 +41,53 @@ export function WorkoutGenerator() {
   const [cacheStatus, setCacheStatus] = useState<"HIT" | "MISS" | "BYPASS" | "">(
     "",
   );
-  const bmi = calculateBmi(form.heightCm, form.weightKg);
-  const bmiCategory = getBmiCategory(bmi);
+
+  const hasMetrics = hasReasonableBodyMetrics(form.heightCm, form.weightKg);
+  const bmi =
+    hasMetrics && form.heightCm !== undefined && form.weightKg !== undefined
+      ? calculateBmi(form.heightCm, form.weightKg)
+      : null;
+  const bmiCategory = bmi !== null ? getBmiCategory(bmi) : null;
+  const displayedHeight =
+    form.heightCm === undefined
+      ? ""
+      : form.unitSystem === "metric"
+        ? String(form.heightCm)
+        : String(cmToInches(form.heightCm));
+  const displayedWeight =
+    form.weightKg === undefined
+      ? ""
+      : form.unitSystem === "metric"
+        ? String(form.weightKg)
+        : String(kgToLb(form.weightKg));
+
+  function updateHeight(rawValue: string) {
+    if (!rawValue.trim()) {
+      setForm((current) => ({ ...current, heightCm: undefined }));
+      return;
+    }
+
+    const numeric = Number(rawValue);
+
+    setForm((current) => ({
+      ...current,
+      heightCm: current.unitSystem === "metric" ? numeric : inchesToCm(numeric),
+    }));
+  }
+
+  function updateWeight(rawValue: string) {
+    if (!rawValue.trim()) {
+      setForm((current) => ({ ...current, weightKg: undefined }));
+      return;
+    }
+
+    const numeric = Number(rawValue);
+
+    setForm((current) => ({
+      ...current,
+      weightKg: current.unitSystem === "metric" ? numeric : lbToKg(numeric),
+    }));
+  }
 
   async function submitForm(forceFresh = false) {
     setIsLoading(true);
@@ -137,6 +189,43 @@ export function WorkoutGenerator() {
             </label>
 
             <label className="grid gap-2">
+              <span className="text-sm font-medium text-slate-800">Units</span>
+              <select
+                className="field"
+                value={form.unitSystem}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    unitSystem: event.target.value as WorkoutInput["unitSystem"],
+                  }))
+                }
+              >
+                <option value="metric">Metric</option>
+                <option value="imperial">Imperial</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <label className="grid gap-2">
+              <span className="text-sm font-medium text-slate-800">Days per week</span>
+              <input
+                className="field"
+                min={1}
+                max={7}
+                step={1}
+                type="number"
+                value={form.daysPerWeek}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    daysPerWeek: Number(event.target.value),
+                  }))
+                }
+              />
+            </label>
+
+            <label className="grid gap-2">
               <span className="text-sm font-medium text-slate-800">
                 Workout duration
               </span>
@@ -159,53 +248,53 @@ export function WorkoutGenerator() {
 
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-slate-800">Height (cm)</span>
+              <span className="text-sm font-medium text-slate-800">
+                Height ({form.unitSystem === "metric" ? "cm" : "in"})
+              </span>
               <input
                 className="field"
-                max={230}
-                min={120}
-                step={1}
+                placeholder={form.unitSystem === "metric" ? "Optional" : "Optional"}
+                step={0.1}
                 type="number"
-                value={form.heightCm}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    heightCm: Number(event.target.value),
-                  }))
-                }
+                value={displayedHeight}
+                onChange={(event) => updateHeight(event.target.value)}
               />
             </label>
 
             <label className="grid gap-2">
-              <span className="text-sm font-medium text-slate-800">Weight (kg)</span>
+              <span className="text-sm font-medium text-slate-800">
+                Weight ({form.unitSystem === "metric" ? "kg" : "lb"})
+              </span>
               <input
                 className="field"
-                max={250}
-                min={35}
-                step={1}
+                placeholder="Optional"
+                step={0.1}
                 type="number"
-                value={form.weightKg}
-                onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    weightKg: Number(event.target.value),
-                  }))
-                }
+                value={displayedWeight}
+                onChange={(event) => updateWeight(event.target.value)}
               />
             </label>
           </div>
 
           <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50/70 p-4">
-            <div className="flex flex-wrap items-center gap-3 text-sm text-amber-900">
-              <span className="font-semibold">BMI {bmi}</span>
-              <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
-                {bmiCategory}
-              </span>
-            </div>
-            <p className="mt-2 text-sm leading-6 text-amber-900/80">
-              Height and weight are used to personalize the prompt and to calculate
-              exercise calorie estimates in the generated plan.
-            </p>
+            {hasMetrics && bmi !== null && bmiCategory ? (
+              <>
+                <div className="flex flex-wrap items-center gap-3 text-sm text-amber-900">
+                  <span className="font-semibold">BMI {bmi}</span>
+                  <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]">
+                    {bmiCategory}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-amber-900/80">
+                  Height and weight are being used for BMI and calorie estimates.
+                </p>
+              </>
+            ) : (
+              <p className="text-sm leading-6 text-amber-900/80">
+                Height and weight are optional. If they are missing or unrealistic,
+                the workout still generates and uses generic calorie assumptions.
+              </p>
+            )}
           </div>
 
           <label className="grid gap-2">
