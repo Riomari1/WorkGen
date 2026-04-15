@@ -28,8 +28,12 @@ export function buildUserPrompt(input: WorkoutInput) {
     `Goal: ${input.goal}.`,
     `Preferred unit system: ${input.unitSystem}.`,
     `Experience level: ${input.experienceLevel}.`,
-    `Training frequency target: ${input.daysPerWeek} days per week.`,
-    `Workout duration: ${input.durationMinutes} minutes.`,
+    ...(input.daysPerWeek
+      ? [`Training frequency target: ${input.daysPerWeek} days per week.`]
+      : []),
+    ...(input.durationMinutes
+      ? [`Workout duration: ${input.durationMinutes} minutes.`]
+      : ["Choose a sensible single-session duration for the goal and level."]),
     ...(hasMetrics
       ? [
           `Height: ${input.heightCm} cm.`,
@@ -37,7 +41,9 @@ export function buildUserPrompt(input: WorkoutInput) {
           `BMI: ${bmi}.`,
         ]
       : ["Ignore body-metric personalization because height/weight were missing or unrealistic."]),
-    `Available equipment: ${input.equipment}.`,
+    ...(input.equipment
+      ? [`Available equipment: ${input.equipment}.`]
+      : ["Available equipment: none specified; choose broadly accessible options."]),
     `Limitations or injuries: ${input.limitations || "None provided."}`,
     "Requirements:",
     "- Include a warm-up, main workout, cooldown, session time breakdown, and a short benefits-oriented explanation.",

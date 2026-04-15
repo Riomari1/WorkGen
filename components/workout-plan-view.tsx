@@ -3,6 +3,7 @@ import type { WorkoutPlan } from "@/lib/workout";
 type WorkoutPlanViewProps = {
   plan: WorkoutPlan | null;
   isLoading: boolean;
+  saveAction?: React.ReactNode;
 };
 
 function SectionCard({
@@ -30,6 +31,7 @@ function SectionCard({
 export function WorkoutPlanView({
   plan,
   isLoading,
+  saveAction,
 }: Readonly<WorkoutPlanViewProps>) {
   if (isLoading) {
     return (
@@ -69,6 +71,7 @@ export function WorkoutPlanView({
   return (
     <div className="grid gap-4">
       <SectionCard subtitle={plan.summary.focus} title={plan.summary.title}>
+        {saveAction ? <div className="mb-4 flex justify-end">{saveAction}</div> : null}
         <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-5">
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="text-xs uppercase tracking-[0.22em] text-slate-500">

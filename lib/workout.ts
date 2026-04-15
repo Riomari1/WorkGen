@@ -1,13 +1,22 @@
 import { z } from "zod";
 
-const numberField = (label: string, min: number, max: number) =>
-  z.coerce
-    .number({
+const textField = (label: string, min = 2) =>
+  z
+    .string({
+      required_error: `${label} is required.`,
       invalid_type_error: `${label} is required.`,
     })
-    .finite(`${label} is required.`)
-    .min(min, `${label} must be at least ${min}.`)
-    .max(max, `${label} must be at most ${max}.`);
+    .trim()
+    .min(min, `${label} is required.`);
+
+const enumField = <TValues extends [string, ...string[]]>(
+  values: TValues,
+  label: string,
+) =>
+  z.enum(values, {
+    required_error: `${label} is required.`,
+    invalid_type_error: `${label} is required.`,
+  });
 
 const optionalNumberField = () =>
   z.preprocess((value) => {
@@ -20,14 +29,17 @@ const optionalNumberField = () =>
   }, z.number().finite().optional());
 
 export const workoutInputSchema = z.object({
-  goal: z.string().trim().min(2, "Goal is required."),
-  unitSystem: z.enum(["metric", "imperial"]),
-  experienceLevel: z.enum(["beginner", "intermediate", "advanced"]),
-  daysPerWeek: numberField("Days per week", 1, 7),
-  durationMinutes: numberField("Workout duration", 10, 120),
+  goal: textField("Goal"),
+  unitSystem: enumField(["metric", "imperial"], "Unit system").default("metric"),
+  experienceLevel: enumField(
+    ["beginner", "intermediate", "advanced"],
+    "Experience level",
+  ),
+  daysPerWeek: optionalNumberField(),
+  durationMinutes: optionalNumberField(),
   heightCm: optionalNumberField(),
   weightKg: optionalNumberField(),
-  equipment: z.string().trim().min(2, "Equipment is required."),
+  equipment: z.string().trim().optional().default(""),
   limitations: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
@@ -65,7 +77,7 @@ export const workoutPlanSchema = z.object({
   summary: z.object({
     title: z.string().min(1),
     focus: z.string().min(1),
-    estimatedMinutes: z.number().int().min(10).max(120),
+    estimatedMinutes: z.number().int().min(10),
     intensity: z.enum(["low", "moderate", "high"]),
     estimatedCalories: z.number().int().min(20).max(2000),
   }),
@@ -86,6 +98,12 @@ export const workoutPlanSchema = z.object({
 
 export type WorkoutInput = z.infer<typeof workoutInputSchema>;
 export type WorkoutPlan = z.infer<typeof workoutPlanSchema>;
+export type SavedWorkout = {
+  id: string;
+  name: string;
+  savedAt: string;
+  plan: WorkoutPlan;
+};
 
 export type ModelWorkoutPlan = Omit<WorkoutPlan, "userMetrics"> & {
   summary: Omit<WorkoutPlan["summary"], "estimatedCalories">;

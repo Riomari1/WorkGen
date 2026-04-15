@@ -29,6 +29,20 @@ type DeepSeekResponse = {
   };
 };
 
+async function parseJsonResponse<T>(response: Response) {
+  const rawText = await response.text();
+
+  try {
+    return JSON.parse(rawText) as T;
+  } catch {
+    throw new Error(
+      response.ok
+        ? "The model endpoint returned invalid JSON."
+        : rawText || "The model request failed.",
+    );
+  }
+}
+
 function parseModelJson(rawContent: string) {
   const trimmed = rawContent.trim();
 
@@ -71,7 +85,7 @@ async function generateWorkoutJson(
     }),
   });
 
-  const data = (await response.json()) as DeepSeekResponse;
+  const data = await parseJsonResponse<DeepSeekResponse>(response);
 
   if (!response.ok) {
     throw new Error(data.error?.message || "The model request failed.");
@@ -94,15 +108,19 @@ export async function POST(request: Request) {
     const parsedInput = workoutInputSchema.safeParse(json);
 
     if (!parsedInput.success) {
-      const issues = parsedInput.error.issues.map((issue) => issue.message);
+      const errorMessage = parsedInput.error.issues
+        .map((issue) => {
+          switch (issue.path.join(".")) {
+            case "goal":
+              return "Please enter your fitness goal.";
+            case "experienceLevel":
+              return "Please select your experience level.";
+            default:
+              return issue.message;
+          }
+        })[0] || "Please complete the required fields before generating.";
 
-      return NextResponse.json(
-        {
-          error: issues[0] || "Please complete the required fields before generating.",
-          details: issues,
-        },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: errorMessage }, { status: 400 });
     }
 
     const cacheKey = createWorkoutCacheKey(parsedInput.data, MODEL);
@@ -139,6 +157,9 @@ export async function POST(request: Request) {
         });
       } catch (error) {
         if (attempt === 1) {
+          if (error instanceof Error && error.name === "ZodError") {
+            throw new Error("The generated workout was incomplete. Please try again.");
+          }
           throw error;
         }
       }
