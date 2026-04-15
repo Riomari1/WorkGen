@@ -433,7 +433,7 @@ export function WorkoutGenerator() {
                     <div className="truncate text-sm font-semibold text-slate-900">
                       {savedWorkout.name}
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-slate-500" suppressHydrationWarning>
                       {new Date(savedWorkout.savedAt).toLocaleDateString()}
                     </div>
                   </button>
